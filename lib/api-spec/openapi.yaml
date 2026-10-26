@@ -10,6 +10,12 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: projects
+    description: Transcript library and project management
+  - name: transcription
+    description: Video transcription and transcript editing
+  - name: ai
+    description: Translation and summarization
 paths:
   /healthz:
     get:
@@ -24,6 +30,229 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List saved transcription projects
+      responses:
+        "200":
+          description: Projects owned by the current browser session
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectListItem"
+    post:
+      operationId: createYoutubeTranscript
+      tags: [transcription]
+      summary: Import captions from a YouTube video
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/YouTubeTranscriptionInput"
+      responses:
+        "201":
+          description: Transcript imported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: Invalid video URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: No accessible captions are available for this video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/summary:
+    get:
+      operationId: getProjectSummary
+      tags: [projects]
+      summary: Get transcript library totals
+      responses:
+        "200":
+          description: Library summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectSummary"
+  /projects/{projectId}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get a project and its transcript
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Project deleted
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/{projectId}/transcript:
+    patch:
+      operationId: updateTranscript
+      tags: [transcription]
+      summary: Save transcript edits
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranscriptUpdate"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/{projectId}/translate:
+    post:
+      operationId: translateProject
+      tags: [ai]
+      summary: Translate transcript and subtitle segments
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranslationInput"
+      responses:
+        "200":
+          description: Translated transcript
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Translation"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/{projectId}/summarize:
+    post:
+      operationId: summarizeProject
+      tags: [ai]
+      summary: Generate an AI summary
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Generated summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectSummaryResult"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /transcriptions/upload:
+    post:
+      operationId: transcribeUpload
+      tags: [transcription]
+      summary: Upload and transcribe a video or audio file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/TranscriptionUploadInput"
+      responses:
+        "201":
+          description: Transcribed project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: Unsupported file or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "413":
+          description: File exceeds the maximum upload size
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "502":
+          description: Transcription provider failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +262,168 @@ components:
           type: string
       required:
         - status
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    TranscriptSegment:
+      type: object
+      required: [start, end, text]
+      properties:
+        start:
+          type: number
+          minimum: 0
+        end:
+          type: number
+          minimum: 0
+        text:
+          type: string
+    ProjectTranslation:
+      type: object
+      required: [language, languageCode, transcript, segments, createdAt]
+      properties:
+        language:
+          type: string
+        languageCode:
+          type: string
+        transcript:
+          type: string
+        segments:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranscriptSegment"
+        createdAt:
+          type: string
+          format: date-time
+    Project:
+      type: object
+      required: [id, title, sourceType, sourceName, status, language, transcript, segments, wordCount, translations, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        sourceType:
+          type: string
+          enum: [upload, youtube]
+        sourceName:
+          type: string
+        sourceUrl:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [completed]
+        language:
+          type: string
+        durationSeconds:
+          type: [number, "null"]
+        transcript:
+          type: string
+        segments:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranscriptSegment"
+        summary:
+          type: [string, "null"]
+        wordCount:
+          type: integer
+        translations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectTranslation"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProjectListItem:
+      type: object
+      required: [id, title, sourceType, sourceName, language, wordCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        sourceType:
+          type: string
+          enum: [upload, youtube]
+        sourceName:
+          type: string
+        language:
+          type: string
+        wordCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProjectSummary:
+      type: object
+      required: [projectCount, wordCount, translatedCount]
+      properties:
+        projectCount:
+          type: integer
+        wordCount:
+          type: integer
+        translatedCount:
+          type: integer
+    ProjectSummaryResult:
+      type: object
+      required: [projectId, summary]
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        summary:
+          type: string
+    Translation:
+      allOf:
+        - $ref: "#/components/schemas/ProjectTranslation"
+    YouTubeTranscriptionInput:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+        language:
+          type: string
+          description: Optional preferred source language code
+    TranscriptUpdate:
+      type: object
+      required: [transcript, segments]
+      properties:
+        transcript:
+          type: string
+        segments:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranscriptSegment"
+    TranslationInput:
+      type: object
+      required: [language, languageCode]
+      properties:
+        language:
+          type: string
+          minLength: 2
+        languageCode:
+          type: string
+          minLength: 2
+          maxLength: 12
+    TranscriptionUploadInput:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+        language:
+          type: string
 
