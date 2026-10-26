@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "VidScript.ai"
+description = "Turn uploaded videos and supported video links into accurate transcripts, translated captions, concise summaries, and downloadable subtitle files."
+version = "1.0.0"
+id = "artifacts/vidscript-ai"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20557
+
+[services.development]
+run = "pnpm --filter @workspace/vidscript-ai run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/vidscript-ai", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/vidscript-ai/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20557"
+BASE_PATH = "/"
