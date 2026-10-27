@@ -11,6 +11,7 @@ export function LandingPage() {
         </Link>
         <nav className="landing-nav-links" aria-label="Main navigation">
           <a href="#features">Features</a>
+          <a href="#pricing">Pricing</a>
           <Link href="/sign-in">Log in</Link>
           <Link href="/sign-up" className="btn btn-primary landing-nav-cta">Create account <ArrowRight size={14} /></Link>
         </nav>
@@ -43,6 +44,19 @@ export function LandingPage() {
           <article className="landing-feature-card"><span className="landing-feature-icon"><Upload size={18} /></span><h3>Transcribe your media</h3><p>Upload audio or video and get an editable transcript with timed subtitle segments.</p></article>
           <article className="landing-feature-card"><span className="landing-feature-icon"><Globe2 size={18} /></span><h3>Reach more people</h3><p>Translate your transcript into another language while keeping the original unchanged.</p></article>
           <article className="landing-feature-card"><span className="landing-feature-icon"><Captions size={18} /></span><h3>Export and publish</h3><p>Generate a short summary and download standard SRT or VTT subtitle files.</p></article>
+        </div>
+      </section>
+
+      <section className="landing-pricing" id="pricing">
+        <div className="landing-section-heading">
+          <span className="eyebrow">Pricing</span>
+          <h2>Clear plans are on the way.</h2>
+        </div>
+        <div className="landing-pricing-card">
+          <span className="landing-pricing-status"><span /> Plans in progress</span>
+          <h3>Pricing is being finalized.</h3>
+          <p>We’re working out the plans and usage limits. No prices have been set yet—we’ll publish them here when they’re ready.</p>
+          <Link href="/sign-up" className="btn btn-primary landing-primary-cta">Create an account <ArrowRight size={15} /></Link>
         </div>
       </section>
 

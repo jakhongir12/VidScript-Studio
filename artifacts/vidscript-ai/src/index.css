@@ -298,6 +298,13 @@ button { cursor: pointer; }
 .landing-feature-icon { width: 33px; height: 33px; display: grid; place-items: center; border-radius: 9px; background: #e5eee6; color: #38776c; }
 .landing-feature-card h3 { margin: 14px 0 7px; color: #344b49; font: 700 13px var(--app-font-display); }
 .landing-feature-card p { max-width: 290px; margin: 0; color: #7b8983; font-size: 11px; line-height: 1.7; }
+.landing-pricing { max-width: 1180px; margin: 0 auto; padding: 36px 0 64px; border-top: 1px solid #e7e4d9; scroll-margin-top: 24px; }
+.landing-pricing .landing-section-heading h2 { margin-bottom: 22px; }
+.landing-pricing-card { max-width: 590px; margin: 0 auto; padding: 28px; border: 1px solid #d9e1d6; border-radius: 13px; background: #fffefa; box-shadow: 0 16px 42px rgba(45,73,64,.07); text-align: center; }
+.landing-pricing-status { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 99px; background: #eff2e9; color: #63867c; font: 500 10px var(--app-font-mono); letter-spacing: .04em; text-transform: uppercase; }
+.landing-pricing-status > span { width: 7px; height: 7px; border-radius: 50%; background: #d77b59; }
+.landing-pricing-card h3 { margin: 17px 0 8px; color: #2a4141; font: 700 21px var(--app-font-display); letter-spacing: -.5px; }
+.landing-pricing-card p { max-width: 430px; margin: 0 auto 20px; color: #74827d; font-size: 12px; line-height: 1.75; }
 .landing-bottom-cta { max-width: 1180px; margin: 0 auto 26px; padding: 23px 27px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border: 1px solid #d9e1d6; border-radius: 12px; background: #eff2e9; }
 .landing-bottom-cta h2 { margin: 7px 0 4px; color: #2b4543; font: 700 18px var(--app-font-display); }
 .landing-bottom-cta p { margin: 0; color: #778680; font-size: 11px; }
@@ -354,6 +361,8 @@ button { cursor: pointer; }
   .landing-feature-grid { grid-template-columns: 1fr; gap: 9px; }
   .landing-feature-card { min-height: auto; padding: 16px; }
   .landing-feature-card h3 { margin-top: 10px; }
+  .landing-pricing { padding: 29px 0 44px; }
+  .landing-pricing-card { padding: 22px 17px; }
   .landing-bottom-cta { align-items: flex-start; flex-direction: column; margin-bottom: 18px; padding: 19px; }
   .landing-footer { min-height: 65px; }
 }
