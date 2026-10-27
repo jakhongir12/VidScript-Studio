@@ -13,6 +13,11 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+export interface ClaimGuestLibraryResult {
+  /** @minimum 0 */
+  transferredCount: number;
+}
+
 export interface TranscriptSegment {
   /** @minimum 0 */
   start: number;

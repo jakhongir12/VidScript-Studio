@@ -9,7 +9,7 @@ const UUID_PATTERN =
 export const guestSession: RequestHandler = (req, res, next) => {
   const savedOwner = req.signedCookies?.[COOKIE_NAME];
   if (typeof savedOwner === "string" && UUID_PATTERN.test(savedOwner)) {
-    res.locals.ownerId = savedOwner;
+    res.locals.guestOwnerId = savedOwner;
     next();
     return;
   }
@@ -23,6 +23,6 @@ export const guestSession: RequestHandler = (req, res, next) => {
     path: "/",
     maxAge: SESSION_TTL,
   });
-  res.locals.ownerId = ownerId;
+  res.locals.guestOwnerId = ownerId;
   next();
 };

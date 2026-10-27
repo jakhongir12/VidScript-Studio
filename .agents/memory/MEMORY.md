@@ -1,1 +1,1 @@
-- [VidScript data ownership](vidscript-data-ownership.md) — Guest sessions isolate transcript libraries; uploads are temporary and source files are not retained.
+- [VidScript data ownership](vidscript-data-ownership.md) — Account-owned transcript libraries can claim only the current browser's signed guest projects; source media remains temporary.

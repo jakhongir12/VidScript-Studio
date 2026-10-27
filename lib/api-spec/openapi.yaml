@@ -30,6 +30,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /account/claim-guest:
+    post:
+      operationId: claimGuestLibrary
+      tags: [projects]
+      summary: Move this browser's guest projects into the signed-in account
+      responses:
+        "200":
+          description: Guest projects transferred
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimGuestLibraryResult"
+        "401":
+          description: A signed-in account is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /projects:
     get:
       operationId: listProjects
@@ -268,6 +286,13 @@ components:
       properties:
         error:
           type: string
+    ClaimGuestLibraryResult:
+      type: object
+      required: [transferredCount]
+      properties:
+        transferredCount:
+          type: integer
+          minimum: 0
     TranscriptSegment:
       type: object
       required: [start, end, text]

@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
+import { publishableKeyFromHost } from '@clerk/react/internal';
+import { shadcn } from '@clerk/themes';
 import {
+  useClaimGuestLibrary,
   useCreateYoutubeTranscript,
   useDeleteProject,
   useGetProject,
@@ -32,6 +36,7 @@ import {
   Link2,
   LoaderCircle,
   LockKeyhole,
+  LogOut,
   Plus,
   Search,
   Sparkles,
@@ -40,19 +45,100 @@ import {
   Video,
   Youtube,
 } from 'lucide-react';
-import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
+import { Link, Redirect, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { LandingPage } from '@/pages/landing';
 import NotFound from '@/pages/not-found';
 import './index.css';
 
 const queryClient = new QueryClient();
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+
+function stripBase(path: string) {
+  return basePath && path.startsWith(basePath)
+    ? path.slice(basePath.length) || '/'
+    : path;
+}
+
+const clerkAppearance = {
+  theme: shadcn,
+  cssLayerName: 'clerk',
+  options: {
+    logoPlacement: 'inside' as const,
+    logoLinkUrl: basePath || '/',
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+  },
+  variables: {
+    colorPrimary: '#236c65',
+    colorForeground: '#253c3e',
+    colorMutedForeground: '#778582',
+    colorDanger: '#a24c43',
+    colorBackground: '#fbfaf5',
+    colorInput: '#fcfbf6',
+    colorInputForeground: '#263c3e',
+    colorNeutral: '#d7d8cf',
+    fontFamily: 'DM Sans, sans-serif',
+    borderRadius: '8px',
+  },
+  elements: {
+    rootBox: 'w-full flex justify-center',
+    cardBox: '!bg-[#fbfaf5] !rounded-2xl !w-[440px] !max-w-full !overflow-hidden !shadow-[0_20px_60px_rgba(23,42,42,0.16)]',
+    card: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    headerTitle: '!text-[#253c3e] !font-[Manrope]',
+    headerSubtitle: '!text-[#778582]',
+    socialButtonsBlockButtonText: '!text-[#3d5251] !font-semibold',
+    socialButtonsBlockButton: '!border-[#d8d5c9] !bg-[#fcfbf6]',
+    formFieldLabel: '!text-[#3d5251] !font-semibold',
+    formFieldInput: '!border-[#d7d8cf] !bg-[#fcfbf6] !text-[#263c3e]',
+    formButtonPrimary: '!bg-[#236c65] hover:!bg-[#1d5d57] !text-[#f8f4e9]',
+    footerActionLink: '!text-[#236c65] !font-semibold',
+    footerActionText: '!text-[#778582]',
+    dividerText: '!text-[#778582]',
+    identityPreviewEditButton: '!text-[#236c65]',
+    formFieldSuccessText: '!text-[#236c65]',
+    alertText: '!text-[#963f38]',
+    logoBox: 'rounded-lg overflow-hidden',
+    logoImage: 'w-8 h-8',
+    footerAction: 'border-t border-[#e4dfd3]',
+    dividerLine: '!bg-[#e4dfd3]',
+    alert: '!border-[#e5c5be] !bg-[#fff9f5]',
+    otpCodeFieldInput: '!border-[#d7d8cf] !bg-[#fcfbf6] !text-[#263c3e]',
+    formFieldRow: 'gap-2',
+    main: 'gap-4',
+  },
+};
 
 type ToastMessage = { text: string; tone?: 'success' | 'error' };
 
+const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
+const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
+  '.aac', '.avi', '.flac', '.m4a', '.mkv', '.mov', '.mp3', '.mp4',
+  '.mpeg', '.mpga', '.oga', '.ogg', '.opus', '.wav', '.webm', '.wmv',
+]);
+
+function uploadErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+  if (/no credits remaining|insufficient_quota|billing hard limit/i.test(message)) {
+    return 'The file was uploaded, but your OpenAI API account has no credits. Add API credits, then retry the transcription.';
+  }
+  if (/\b429\b/.test(message)) {
+    return 'The transcription service is busy. Wait a moment, then try again.';
+  }
+  return message.replace(/^HTTP \d+ [^:]+:\s*/i, '') || 'Upload could not be transcribed. Check the file format and try again.';
+}
+
 function AppFrame({ children, current = 'library' }: { children: ReactNode; current?: string }) {
   const [location] = useLocation();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -62,7 +148,7 @@ function AppFrame({ children, current = 'library' }: { children: ReactNode; curr
         </Link>
         <div className="workspace-label">Workspace</div>
         <nav>
-          <Link href="/" className={`nav-link ${current === 'library' ? 'active' : ''}`} data-testid="link-library">
+          <Link href="/workspace" className={`nav-link ${current === 'library' ? 'active' : ''}`} data-testid="link-library">
             <AlignLeft size={16} /> Transcript library
           </Link>
         </nav>
@@ -72,8 +158,9 @@ function AppFrame({ children, current = 'library' }: { children: ReactNode; curr
             Your videos and transcripts stay yours. Only you can access this library.
           </div>
           <div className="profile">
-            <div className="profile-avatar">VS</div>
-            <div className="profile-meta"><b>Creator workspace</b><small>Personal library</small></div>
+            <div className="profile-avatar">{user?.firstName?.slice(0, 1) || 'V'}</div>
+            <div className="profile-meta"><b>{user?.fullName || 'Your workspace'}</b><small>{user?.primaryEmailAddress?.emailAddress || 'Personal library'}</small></div>
+            <button className="btn btn-quiet sign-out-button" type="button" title="Sign out" aria-label="Sign out" onClick={() => void signOut({ redirectUrl: basePath || '/' })}><LogOut size={15} /></button>
           </div>
         </div>
       </aside>
@@ -198,8 +285,24 @@ function Library() {
         setToast({ text: 'Upload received. Your transcript is ready.' });
         setLocation(`/projects/${project.id}`);
       },
-      onError: () => setFormError('Upload could not be transcribed. Check the file format and try again.'),
+      onError: (error) => setFormError(uploadErrorMessage(error)),
     });
+  };
+
+  const chooseFile = (selected: File | null) => {
+    setFile(selected);
+    setFormError('');
+    if (!selected) return;
+    const extension = selected.name.slice(selected.name.lastIndexOf('.')).toLowerCase();
+    if (!SUPPORTED_UPLOAD_EXTENSIONS.has(extension)) {
+      setFormError('Choose a supported audio or video file, such as MP3, MP4, MOV, or WAV.');
+      setFile(null);
+      return;
+    }
+    if (selected.size > MAX_UPLOAD_BYTES) {
+      setFormError('This file is larger than the 500 MB upload limit.');
+      setFile(null);
+    }
   };
 
   const removeProject = () => {
@@ -245,8 +348,8 @@ function Library() {
             <p className="option-copy">Upload your own video or audio when captions aren’t available.</p>
             <form onSubmit={submitUpload}>
               <div className="upload-box">
-                <span>{file ? file.name : 'MP4, MOV, MP3, WAV and more'}</span>
-                <input id="media-file" className="file-input" type="file" accept="video/*,audio/*" data-testid="input-upload-file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+                <span>{file ? file.name : 'MP3, MP4, MOV, WAV and more (up to 500 MB)'}</span>
+                <input id="media-file" className="file-input" type="file" accept=".aac,.avi,.flac,.m4a,.mkv,.mov,.mp3,.mp4,.mpeg,.mpga,.oga,.ogg,.opus,.wav,.webm,.wmv,audio/*,video/*" aria-label="Choose an audio or video file" data-testid="input-upload-file" onChange={(event) => chooseFile(event.target.files?.[0] ?? null)} />
                 <label className="btn btn-secondary btn-small" htmlFor="media-file"><Plus size={13} /> Choose file</label>
               </div>
               <div className="inline-form" style={{ marginTop: 8 }}>
@@ -389,7 +492,7 @@ function ProjectEditor() {
   return (
     <AppFrame current="editor">
       <section className="page-wrap animate-in">
-        <Link href="/" className="back-link" data-testid="link-back-library"><ArrowLeft size={14} /> Back to library</Link>
+        <Link href="/workspace" className="back-link" data-testid="link-back-library"><ArrowLeft size={14} /> Back to library</Link>
         {projectQuery.isLoading ? <div className="editor-grid"><div className="panel" style={{ padding: 20 }}><div className="skeleton" style={{ height: 24, width: '55%', marginBottom: 18 }} /><div className="skeleton" style={{ height: 320 }} /></div><div className="panel" style={{ height: 220 }} /></div> :
         projectQuery.isError ? <div className="error-state panel"><div className="empty-symbol"><CircleAlert size={20} /></div><h3>Transcript unavailable</h3><p>This project couldn’t be opened. It may have been removed, or your connection may be interrupted.</p><button className="btn btn-secondary" style={{ marginTop: 15 }} onClick={() => projectQuery.refetch()} data-testid="button-retry-project">Try again</button></div> :
         project && <>
@@ -457,27 +560,140 @@ function ProjectEditor() {
   );
 }
 
-function RoutedErrorBoundary({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
-  return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
+function ClerkQueryClientCacheInvalidator() {
+  const { addListener } = useClerk();
+  const queryClient = useQueryClient();
+  const previousUserId = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    const unsubscribe = addListener(({ user }) => {
+      const userId = user?.id ?? null;
+      if (previousUserId.current !== undefined && previousUserId.current !== userId) {
+        queryClient.clear();
+      }
+      previousUserId.current = userId;
+    });
+    return unsubscribe;
+  }, [addListener, queryClient]);
+
+  return null;
 }
 
-function Router() {
-  return <RoutedErrorBoundary><Switch>
-    <Route path="/" component={Library} />
-    <Route path="/projects/:projectId" component={ProjectEditor} />
+function ClaimGuestProjects() {
+  const { user, isLoaded, isSignedIn } = useUser();
+  const queryClient = useQueryClient();
+  const claimMutation = useClaimGuestLibrary();
+  const lastClaimedUser = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !user?.id || lastClaimedUser.current === user.id) return;
+    lastClaimedUser.current = user.id;
+    claimMutation.mutate(undefined, {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: getGetProjectSummaryQueryKey() });
+      },
+      onError: () => {
+        lastClaimedUser.current = null;
+      },
+    });
+  }, [claimMutation.mutate, isLoaded, isSignedIn, queryClient, user?.id]);
+
+  return null;
+}
+
+function SignInPage() {
+  return (
+    <main className="auth-page">
+      <Link href="/" className="auth-back-link"><AudioLines size={17} /> vidscript.ai</Link>
+      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} forceRedirectUrl={`${basePath}/workspace`} />
+    </main>
+  );
+}
+
+function SignUpPage() {
+  return (
+    <main className="auth-page">
+      <Link href="/" className="auth-back-link"><AudioLines size={17} /> vidscript.ai</Link>
+      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} forceRedirectUrl={`${basePath}/workspace`} />
+    </main>
+  );
+}
+
+function HomeRedirect() {
+  return (
+    <>
+      <Show when="signed-in"><Redirect to="/workspace" /></Show>
+      <Show when="signed-out"><LandingPage /></Show>
+    </>
+  );
+}
+
+function SignedInWorkspace() {
+  return (
+    <>
+      <Show when="signed-in"><Library /></Show>
+      <Show when="signed-out"><Redirect to="/" /></Show>
+    </>
+  );
+}
+
+function SignedInProjectEditor() {
+  return (
+    <>
+      <Show when="signed-in"><ProjectEditor /></Show>
+      <Show when="signed-out"><Redirect to="/" /></Show>
+    </>
+  );
+}
+
+function RoutedContent() {
+  const [location] = useLocation();
+  return <ErrorBoundary resetKey={location}><Switch>
+    <Route path="/" component={HomeRedirect} />
+    <Route path="/workspace" component={SignedInWorkspace} />
+    <Route path="/projects/:projectId" component={SignedInProjectEditor} />
+    <Route path="/sign-in/*?" component={SignInPage} />
+    <Route path="/sign-up/*?" component={SignUpPage} />
     <Route component={NotFound} />
-  </Switch></RoutedErrorBoundary>;
+  </Switch></ErrorBoundary>;
+}
+
+function ClerkProviderWithRoutes({ children }: { children: ReactNode }) {
+  const [, setLocation] = useLocation();
+  return (
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      proxyUrl={clerkProxyUrl}
+      appearance={clerkAppearance}
+      signInUrl={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      localization={{
+        signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to access your transcripts' } },
+        signUp: { start: { title: 'Create your account', subtitle: 'Save your transcripts in a private workspace' } },
+      }}
+      routerPush={(to) => setLocation(stripBase(to))}
+      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
+    >
+      {children}
+    </ClerkProvider>
+  );
 }
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <WouterRouter base={basePath}>
+      <ClerkProviderWithRoutes>
+        <QueryClientProvider client={queryClient}>
+          <ClerkQueryClientCacheInvalidator />
+          <ClaimGuestProjects />
+          <TooltipProvider>
+            <RoutedContent />
+            <Toaster />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ClerkProviderWithRoutes>
+    </WouterRouter>
   );
 }
 

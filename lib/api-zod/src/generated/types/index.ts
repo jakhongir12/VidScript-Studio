@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './claimGuestLibraryResult';
 export * from './errorEnvelope';
 export * from './healthStatus';
 export * from './project';

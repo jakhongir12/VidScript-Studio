@@ -4,21 +4,21 @@ VidScript.ai imports public YouTube captions or transcribes uploaded audio/video
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL`, `SESSION_SECRET`, `OPENAI_API_KEY`; Clerk keys are provisioned through Replit Clerk Auth
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
+- API: Express 5, Clerk authentication
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Build: esbuild (ESM bundle)
 
 ## Where things live
 
@@ -32,11 +32,13 @@ VidScript.ai imports public YouTube captions or transcribes uploaded audio/video
 - OpenAI Whisper processes uploaded media; FFmpeg extracts and splits audio into provider-sized chunks.
 - YouTube links import existing public caption tracks; videos without accessible captions must be uploaded by the user.
 - PostgreSQL stores transcripts and translations. Uploaded source media is temporary and deleted after processing.
-- A signed, HTTP-only guest session cookie scopes each library without requiring account setup.
+- Clerk accounts own transcript libraries; signing in claims projects from the browser's signed guest session.
+- Guest session cookies are HTTP-only and signed; source uploads are deleted after processing.
 
 ## Product
 
 - Create a transcript library from media uploads or public YouTube captions.
+- Register or sign in to keep a private transcript library across sessions.
 - Edit transcripts and timed segments, generate summaries and translations, and export SRT or VTT subtitles.
 
 ## User preferences

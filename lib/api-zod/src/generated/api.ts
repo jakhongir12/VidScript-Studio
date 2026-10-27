@@ -18,6 +18,18 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Move this browser's guest projects into the signed-in account
+ */
+export const claimGuestLibraryResponseTransferredCountMin = 0;
+
+
+
+export const ClaimGuestLibraryResponse = zod.object({
+  "transferredCount": zod.number().int().min(claimGuestLibraryResponseTransferredCountMin)
+})
+
+
+/**
  * @summary List saved transcription projects
  */
 export const ListProjectsResponseItem = zod.object({
