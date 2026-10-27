@@ -49,14 +49,29 @@ export function LandingPage() {
 
       <section className="landing-pricing" id="pricing">
         <div className="landing-section-heading">
-          <span className="eyebrow">Pricing</span>
-          <h2>Clear plans are on the way.</h2>
+          <span className="eyebrow">Plans and pricing</span>
+          <h2>Start free. Upgrade for unlimited.</h2>
         </div>
-        <div className="landing-pricing-card">
-          <span className="landing-pricing-status"><span /> Plans in progress</span>
-          <h3>Pricing is being finalized.</h3>
-          <p>We’re working out the plans and usage limits. No prices have been set yet—we’ll publish them here when they’re ready.</p>
-          <Link href="/sign-up" className="btn btn-primary landing-primary-cta">Create an account <ArrowRight size={15} /></Link>
+        <div className="landing-pricing-grid">
+          <article className="landing-plan-card">
+            <div className="landing-plan-title"><h3>Free</h3><span>Get started</span></div>
+            <div className="landing-plan-price"><strong>$0</strong><span>free</span></div>
+            <p className="landing-plan-copy">Try VidScript.ai with five transcriptions.</p>
+            <ul className="landing-plan-list">
+              <li>5 transcriptions total</li>
+              <li>Up to 30 minutes per transcription</li>
+            </ul>
+            <Link href="/sign-up" className="btn btn-primary landing-primary-cta">Create a free account <ArrowRight size={15} /></Link>
+          </article>
+          <article className="landing-plan-card landing-plan-card-paid">
+            <div className="landing-plan-title"><h3>Paid</h3><span>Unlimited</span></div>
+            <div className="landing-plan-price"><strong>$100</strong><span>/ month</span></div>
+            <p className="landing-plan-copy">For ongoing transcription needs.</p>
+            <ul className="landing-plan-list">
+              <li>Unlimited transcriptions</li>
+            </ul>
+            <p className="landing-plan-unavailable">Paid checkout isn’t available yet.</p>
+          </article>
         </div>
       </section>
 
